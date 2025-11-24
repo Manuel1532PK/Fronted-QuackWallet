@@ -3,6 +3,7 @@ import { loginUser, resendVerificationEmail } from "../../api/authApi";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Logo_QuackWallet from '../../assets/Logo_QuackWallet.png';
+import './../../App.css'
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
@@ -21,7 +22,6 @@ export default function Login() {
 
     try {
       const response = await loginUser(correo, password);
-      // Verifica que la respuesta tenga los datos esperados
       if (response && response.token && response.user) {
         login(response.user, response.token);
         navigate("/home");
@@ -30,16 +30,13 @@ export default function Login() {
       }
     } catch (err) {
       console.error("Error en login:", err);
-      
-      // Manejo mejorado de errores
+
+      // Manejo mejorado de errores de login.jsx
       if (err.response?.status === 400) {
-        if (err.response?.data?.message === "Usuario no encontrado") {
-          setError("Correo no registrado");
-        } else if (err.response?.data?.message === "Contraseña incorrecta") {
-          setError("Contraseña incorrecta");
-        } else {
-          setError(err.response?.data?.message || "Credenciales incorrectas");
-        }
+        const msg = err.response?.data?.message;
+        if (msg === "Usuario no encontrado") setError("Correo no registrado");
+        else if (msg === "Contraseña incorrecta") setError("Contraseña incorrecta");
+        else setError(msg || "Credenciales incorrectas");
       } else if (err.message === "Email no verificado") {
         setError("Tu correo no ha sido verificado. Por favor, verifica tu correo.");
         setShowResend(true);
@@ -62,59 +59,82 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <img src={Logo_QuackWallet} alt="Logo_QuackWallet" className="logo mb-8 w-48" />
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-lg w-80">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Iniciar sesión</h2>
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={correo}
-          onChange={(e) => setCorreo(e.target.value)}
-          className="w-full border p-3 mb-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-          required
-        />
-        <br></br>
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-3 mb-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-          required
-        />
-        
-        {error && <p className="text-red-500 text-sm mb-2 text-center">{error}</p>}
-        
-        {showResend && (
-          <button
-            type="button"
-            onClick={handleResendVerification}
-            className="mb-4 text-sm text-blue-600 underline w-full text-center"
-          >
-            Reenviar correo de verificación
-          </button>
-        )}
-        <br></br>
-        <button 
-          type="submit"
-          disabled={isLoading}
-          className="bg-blue-600 text-black w-full py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isLoading ? "Iniciando sesión..." : "Entrar"}
-        </button>
-        
-        <p className="mt-4 text-center text-sm text-black-600">
+    <div className="app-wrapper" aria-live="polite">
+      <div className="login-card" role="region" aria-label="Login">
+
+        {/* Logo: centrado por CSS */}
+        <img src={Logo_QuackWallet} alt="QuackWallet logo" className="logo" />
+
+        <h2 className="login-title">Iniciar sesión</h2>
+
+        <form onSubmit={handleSubmit} className="login-form" noValidate>
+          <div className="form-group">
+            <input
+              type="email"
+              placeholder="Correo electrónico"
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
+              className="login-input"
+              required
+              autoComplete="email"
+              aria-label="Correo electrónico"
+            />
+          </div>
+
+          <div className="form-group">
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="login-input"
+              required
+              autoComplete="current-password"
+              aria-label="Contraseña"
+            />
+          </div>
+
+          {/* Mensaje de error */}
+          {error && <div className="form-error" role="alert">{error}</div>}
+
+          {/* Reenviar verificación - versión mejorada */}
+          {showResend && (
+            <div style={{display:'flex',justifyContent:'center'}}>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="resend-btn text-sm text-blue-600 underline"
+              >
+                Reenviar correo de verificación
+              </button>
+            </div>
+          )}
+
+          {/* Botón principal */}
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn btn-primary"
+              aria-busy={isLoading}
+            >
+              {isLoading ? "Iniciando sesión..." : "Entrar"}
+            </button>
+          </div>
+        </form>
+
+        {/* Footer / registro */}
+        <div className="form-footer">
           ¿No tienes cuenta?{" "}
           <button
             type="button"
             onClick={() => navigate("/register")}
-            className="text-blue-600 hover:text-blue-800"
+            className="btn btn-secondary"
           >
             Regístrate aquí
           </button>
-        </p>
-      </form>
+        </div>
+      </div>
     </div>
   );
 }

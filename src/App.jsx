@@ -6,8 +6,10 @@ import Register from './component/auth-page/register';
 import Home from './component/home';
 import Profile from './component/auth-page/profile'
 import Verification from './component/auth-page/verification';
-import './App.css'
+import Cards from './component/cards';
 
+import './App.css'
+import './index.css'
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<Verification />} />
+          <Route path="/cards" element={<Cards />} />   
         </Routes>
       </Router>
     </AuthProvider>
