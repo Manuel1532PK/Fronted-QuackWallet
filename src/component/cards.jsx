@@ -127,7 +127,7 @@ function Sidebar({ user, navigate, handleLogout, nombreUsuario, location }) {
 function AddCardModal({ show, onHide, onAddCard, isLoading }) {
   const [formData, setFormData] = useState({
     Nombre: "",
-    Tipo_tarjeta: "",
+    Tipo_tarjeta:"",
     Banco: "",
     Numero: "",
     Saldo: ""
@@ -306,7 +306,7 @@ export default function Cards() {
 
   // Cargar tarjetas al montar el componente
   const loadCards = useCallback(async () => {
-  if (!user) return; // Si no hay user, no hacemos nada
+  if (!user) return; 
   try {
     setIsLoading(true);
     const response = await cardApi.getCards(user.id);
@@ -434,7 +434,7 @@ useEffect(() => {
                   >
                     <h5 className="fw-bold">{tarjeta.Nombre}</h5>
                     <p className="text-muted mb-1">
-                      **** **** **** {tarjeta.Numero.slice(-4)}
+                    **** **** **** {tarjeta.Numero ? tarjeta.Numero.slice(-4) : '****'}
                     </p>
                     <small className="text-muted">
                       {tarjeta.Banco} • {tarjeta.Tipo_tarjeta}
@@ -450,7 +450,7 @@ useEffect(() => {
                 <Card className="p-4 shadow-sm border-0">
                   <h3 className="fw-bold mb-3">{selectedCard.Nombre}</h3>
                   <p className="mb-1">
-                    <strong>Número:</strong> **** **** **** {selectedCard.Numero.slice(-4)}
+                    <strong>Número:</strong> **** **** **** {selectedCard.Numero ? selectedCard.Numero.slice(-4) : '****'}
                   </p>
                   <p className="mb-1">
                     <strong>Tipo:</strong> {selectedCard.Tipo_tarjeta}
@@ -459,7 +459,7 @@ useEffect(() => {
                     <strong>Banco:</strong> {selectedCard.Banco}
                   </p>
                   <p className="mb-3">
-                    <strong>Saldo:</strong> ${selectedCard.Saldo?.toLocaleString()}
+                    <strong>Saldo:</strong> ${selectedCard.Saldo ? selectedCard.Saldo.toLocaleString() : '0.00'}
                   </p>
                   <p className="mb-3">
                     <strong>Estado:</strong> {selectedCard.Estado}

@@ -1,5 +1,5 @@
 import { AuthContext } from "../../context/AuthContext";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 // Bootstrap
@@ -9,6 +9,10 @@ import Card from "react-bootstrap/Card";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import Modal from "react-bootstrap/Modal";
+import Alert from "react-bootstrap/Alert";
+import Spinner from "react-bootstrap/Spinner";
 
 // Iconos
 import {
@@ -21,9 +25,14 @@ import {
   IoSettingsOutline,
   IoHomeOutline,
   IoPeopleOutline,
+  IoCameraOutline,
+  IoPencilOutline,
 } from "react-icons/io5";
 
-// Sidebar + secciones (iguales al home.jsx)
+// API
+import { userApi } from "../../api/userApi";
+
+// Sidebar + secciones (mantén igual)
 const SECCIONES = [
   {
     title: "Seguridad",
@@ -99,11 +108,10 @@ function Sidebar({ user, navigate, handleLogout, nombreUsuario, location }) {
               key={link.path}
               onClick={() => navigate(link.path)}
               href={link.path}
-              className={`d-flex align-items-center mb-1 rounded py-2 ${
-                isActive
+              className={`d-flex align-items-center mb-1 rounded py-2 ${isActive
                   ? "bg-warning-subtle text-dark fw-bold border-start border-4 border-warning"
                   : "text-dark-50 hover-link-sidebar"
-              }`}
+                }`}
             >
               <link.icon size={20} className="me-3" />
               {link.name}
@@ -124,11 +132,10 @@ function Sidebar({ user, navigate, handleLogout, nombreUsuario, location }) {
               key={sec.path}
               onClick={() => navigate(sec.path)}
               href={sec.path}
-              className={`d-flex align-items-center mb-1 rounded py-2 ${
-                isActive
+              className={`d-flex align-items-center mb-1 rounded py-2 ${isActive
                   ? "bg-warning-subtle text-dark fw-bold border-start border-4 border-warning"
                   : "text-dark-50 hover-link-sidebar"
-              }`}
+                }`}
             >
               <sec.icon size={20} className="me-3" />
               {sec.title}
@@ -151,14 +158,270 @@ function Sidebar({ user, navigate, handleLogout, nombreUsuario, location }) {
   );
 }
 
+// Modal para editar perfil
+function EditProfileModal({ show, onHide, user, onUpdateProfile, isLoading }) {
+  const [formData, setFormData] = useState({
+    Nombre_Usuario: "",
+    Correo: "",
+    Telefono: ""
+  });
+  const [imagen, setImagen] = useState(null);
+  const [previewImagen, setPreviewImagen] = useState("");
+  const [errors, setErrors] = useState({});
+
+  // Cargar datos del usuario cuando se abre el modal
+  useEffect(() => {
+    if (user && show) {
+      setFormData({
+        Nombre_Usuario: user.Nombre_Usuario || user.nombre || "",
+        Correo: user.Correo || user.correo || "",
+        Telefono: user.Telefono || ""
+      });
+      setPreviewImagen(user.Imagen_Perfil || "");
+    }
+  }, [user, show]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newErrors = {};
+
+    if (!formData.Nombre_Usuario.trim()) {
+      newErrors.Nombre_Usuario = "El nombre es requerido";
+    }
+    if (!formData.Correo.trim()) {
+      newErrors.Correo = "El correo es requerido";
+    }
+    if (!formData.Telefono.trim()) {
+      newErrors.Telefono = "El teléfono es requerido";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      await onUpdateProfile(formData, imagen);
+      setImagen(null);
+      setPreviewImagen("");
+      setErrors({});
+    } catch (error) {
+      console.error("Error al actualizar perfil:", error);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleImagenChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagen(file);
+      // Crear preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImagen(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <Modal show={show} onHide={onHide} centered size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>Editar Perfil</Modal.Title>
+      </Modal.Header>
+      <Form onSubmit={handleSubmit}>
+        <Modal.Body>
+          <Row>
+            <Col md={4} className="text-center">
+              <div className="mb-3">
+                {previewImagen ? (
+                  <img
+                    src={previewImagen}
+                    alt="Preview"
+                    className="rounded-circle"
+                    style={{ width: "150px", height: "150px", objectFit: "cover" }}
+                  />
+                ) : (
+                  <IoPersonCircleOutline size={150} className="text-secondary" />
+                )}
+              </div>
+
+              <Form.Group>
+                <Form.Label className="btn btn-outline-primary cursor-pointer">
+                  <IoCameraOutline className="me-2" />
+                  Cambiar Foto
+                  <Form.Control
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImagenChange}
+                    style={{ display: 'none' }}
+                  />
+                </Form.Label>
+              </Form.Group>
+            </Col>
+
+            <Col md={8}>
+              <Form.Group className="mb-3">
+                <Form.Label>Nombre *</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="Nombre_Usuario"
+                  value={formData.Nombre_Usuario}
+                  onChange={handleChange}
+                  isInvalid={!!errors.Nombre_Usuario}
+                  required
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.Nombre_Usuario}
+                </Form.Control.Feedback>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Correo *</Form.Label>
+                <Form.Control
+                  type="email"
+                  name="Correo"
+                  value={formData.Correo}
+                  onChange={handleChange}
+                  isInvalid={!!errors.Correo}
+                  required
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.Correo}
+                </Form.Control.Feedback>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Teléfono *</Form.Label>
+                <Form.Control
+                  type="tel"
+                  name="Telefono"
+                  value={formData.Telefono}
+                  onChange={handleChange}
+                  isInvalid={!!errors.Telefono}
+                  required
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.Telefono}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onHide}>
+            Cancelar
+          </Button>
+          <Button variant="warning" type="submit" disabled={isLoading}>
+            {isLoading ? <Spinner size="sm" /> : "Guardar Cambios"}
+          </Button>
+        </Modal.Footer>
+      </Form>
+    </Modal>
+  );
+}
+
 export default function Profile() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [userProfile, setUserProfile] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Cargar perfil completo del usuario
+  const loadUserProfile = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const response = await userApi.getCompleteProfile(user.id);
+      setUserProfile(response.data);
+      setError("");
+    } catch (err) {
+      console.error("Error al cargar perfil:", err);
+      setError("Error al cargar el perfil");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+    }
+  }, [loadUserProfile]);
+
   useEffect(() => {
     if (!user) navigate("/login");
-  }, [user]);
+  }, [user, navigate]);
+
+  const handleUpdateProfile = async (formData, imagen) => {
+    try {
+      setIsLoading(true);
+      setError("");
+      setSuccess("");
+
+      console.log('Enviando datos al backend:', formData);
+      console.log('ID del usuario:', user.id);
+      console.log('¿Hay imagen?:', !!imagen);
+
+      // 1. Primero actualizar los datos básicos
+      const response = await userApi.updateProfile(user.id, {
+        Nombre_Usuario: formData.Nombre_Usuario,
+        Correo: formData.Correo,
+        Telefono: formData.Telefono
+      });
+
+      console.log('Respuesta del backend (datos):', response.data);
+
+      // 2. Si hay imagen, actualizarla por separado
+      if (imagen) {
+        console.log('Subiendo imagen...');
+        try {
+          const imageResponse = await userApi.updateProfileImage(user.id, imagen);
+          console.log('Respuesta del backend (imagen):', imageResponse.data);
+        } catch (imageError) {
+          console.error('Error subiendo imagen:', imageError);
+          // No lanzar error aquí para no interrumpir la actualización de datos
+        }
+      }
+
+      // 3. Recargar perfil completo para obtener los últimos datos
+      await loadUserProfile();
+
+      // 4. Actualizar el contexto global con los nuevos datos básicos
+      updateUser({
+        nombre: formData.Nombre_Usuario,
+        correo: formData.Correo,
+        Telefono: formData.Telefono
+      });
+
+      setSuccess("Perfil actualizado correctamente");
+      setShowEditModal(false);
+
+    } catch (err) {
+      console.error("Error completo al actualizar perfil:", err);
+      console.error("Respuesta del error:", err.response);
+
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al actualizar el perfil";
+
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -171,7 +434,8 @@ export default function Profile() {
     );
   }
 
-  const nombreUsuario = user.nombre;
+  const profileData = userProfile || user;
+  const nombreUsuario = profileData.Nombre_Usuario || profileData.nombre;
 
   return (
     <div className="d-flex w-100 vh-100" style={{ backgroundColor: "#fef5da" }}>
@@ -191,39 +455,83 @@ export default function Profile() {
           <h1 className="fw-bold mb-3">Mi Perfil</h1>
           <p className="text-muted">Gestiona tu información personal.</p>
 
-          {/* Card perfil */}
-          <Card className="p-4 shadow-sm border-0">
-            <Row>
-              {/* Lado izquierdo: ícono y botón */}
-              <Col
-                xs={12}
-                md={4}
-                className="d-flex flex-column align-items-center justify-content-center mb-4 mb-md-0"
-              >
-                <IoPersonCircleOutline size={120} className="text-secondary mb-3" />
+          {/* Alertas */}
+          {error && <Alert variant="danger" onClose={() => setError("")} dismissible>{error}</Alert>}
+          {success && <Alert variant="success" onClose={() => setSuccess("")} dismissible>{success}</Alert>}
 
-                <Button variant="warning" className="fw-bold px-4">
-                  Editar perfil
-                </Button>
-              </Col>
+          {isLoading && !userProfile ? (
+            <div className="text-center">
+              <Spinner animation="border" variant="warning" />
+              <p className="mt-2 text-muted">Cargando perfil...</p>
+            </div>
+          ) : (
+            /* Card perfil */
+            <Card className="p-4 shadow-sm border-0">
+              <Row>
+                {/* Lado izquierdo: imagen y botón */}
+                <Col
+                  xs={12}
+                  md={4}
+                  className="d-flex flex-column align-items-center justify-content-center mb-4 mb-md-0"
+                >
+                  {profileData.Imagen_Perfil ? (
+                    <img
+                      src={profileData.Imagen_Perfil}
+                      alt="Perfil"
+                      className="rounded-circle mb-3"
+                      style={{ width: "120px", height: "120px", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <IoPersonCircleOutline size={120} className="text-secondary mb-3" />
+                  )}
 
-              {/* Lado derecho: datos personales */}
-              <Col xs={12} md={8}>
-                <h4 className="fw-bold mb-3">Datos Personales</h4>
+                  <Button
+                    variant="warning"
+                    className="fw-bold px-4"
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    <IoPencilOutline className="me-2" />
+                    Editar perfil
+                  </Button>
+                </Col>
 
-                <p>
-                  <strong>Nombre:</strong> {user.nombre}
-                </p>
-                <p>
-                  <strong>Correo:</strong> {user.correo}
-                </p>
-                <p>
-                  <strong>ID:</strong> {user.id}
-                </p>
-              </Col>
-            </Row>
-          </Card>
+                {/* Lado derecho: datos personales */}
+                <Col xs={12} md={8}>
+                  <h4 className="fw-bold mb-3">Datos Personales</h4>
+
+                  <p>
+                    <strong>Nombre:</strong> {nombreUsuario}
+                  </p>
+                  <p>
+                    <strong>Correo:</strong> {profileData.Correo || profileData.correo}
+                  </p>
+                  <p>
+                    <strong>Teléfono:</strong> {profileData.Telefono || "No especificado"}
+                  </p>
+                  <p>
+                    <strong>ID:</strong> {user.id}
+                  </p>
+                  <p>
+                    <strong>Fecha de Registro:</strong> {profileData.Fecha_Registro ?
+                      new Date(profileData.Fecha_Registro).toLocaleDateString() : "No disponible"}
+                  </p>
+                  <p>
+                    <strong>Estado:</strong> <span className="badge bg-success">{profileData.Estado || "Activo"}</span>
+                  </p>
+                </Col>
+              </Row>
+            </Card>
+          )}
         </Container>
+
+        {/* Modal para editar perfil */}
+        <EditProfileModal
+          show={showEditModal}
+          onHide={() => setShowEditModal(false)}
+          user={profileData}
+          onUpdateProfile={handleUpdateProfile}
+          isLoading={isLoading}
+        />
 
         {/* FOOTER */}
         <footer
